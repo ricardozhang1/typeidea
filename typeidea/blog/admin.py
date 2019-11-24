@@ -6,21 +6,37 @@ from .models import Post, Category, Tag
 from .adminforms import PostAdminForm
 
 from typeidea.custom_site import custom_site
+from typeidea.base_admin import BaseOwnerAdmin
 
 # Register your models here.
 
 
+class PostInline(admin.TabularInline):  # StackedInline样式不同
+    """
+    可选择继承admin.StackedInline，获取不同的展示样式
+    """
+    fields = ('title', 'desc')
+    extra = 1  # 控制额外多几个
+    model = Post
+
+
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ('name', 'status', 'created_time')
+
+    inlines = [PostInline]
+
+    list_display = ('name', 'status', 'created_time', 'post_count')
     fields = ('name', 'status', 'is_nav')
 
-    def save_model(self, request, obj, form, change):
-        obj.owner = request.user
-        return super(CategoryAdmin, self).save_model(request, obj, form, change)
+    # def save_model(self, request, obj, form, change):
+    #     obj.owner = request.user
+    #     return super(CategoryAdmin, self).save_model(request, obj, form, change)
 
     def post_count(self, obj):
         return obj.post_set.count()
+
+    # def __str__(self):
+    #     return self.name
 
     post_count.short_description = "文章数量"
 
@@ -60,7 +76,7 @@ class PostAdmin(admin.ModelAdmin):
     ]
     list_display_links = []
 
-    list_filter = ['category', ]
+    list_filter = [CategoryOwnerFilter]
     search_fields = ['title', 'category__name']
 
     actions_on_top = True
@@ -101,6 +117,7 @@ class PostAdmin(admin.ModelAdmin):
     )
 
     filter_horizontal = ('tag', )
+    # 或者
     # filter_vertical = ('tag', )
 
     def operator(self, obj):
@@ -131,7 +148,7 @@ class CategoryOwnerFilter(admin.SimpleListFilter):
     parameter_name = 'owner_category'
 
     def lookups(self, request, model_admin):
-        return Category.object.filter(owner=request.user).value_list('id', 'name')
+        return Category.objects.filter(owner=request.user).value_list('id', 'name')
 
     def queryset(self, request, queryset):
         category_id = self.value()
@@ -140,12 +157,9 @@ class CategoryOwnerFilter(admin.SimpleListFilter):
         return queryset
 
 
-# class PostInline(admin.TabularInline):  # StackedInline样式不同
-#     fields = ('title', 'desc')
-#     extra = 1  # 控制额外多几个
-#     model = Post
-#
-#
-# class CategoryAdmin(admin.ModelAdmin):
-#     inlines = [PostInline, ]
+
+
+
+class CategoryAdmin(admin.ModelAdmin):
+    inlines = [PostInline, ]
 
